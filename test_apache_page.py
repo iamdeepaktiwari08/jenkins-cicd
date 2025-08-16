@@ -1,16 +1,25 @@
+import sys
+import os
 from selenium import webdriver
-from selenium.webdriver.common.by import By
+from selenium.webdriver.firefox.service import Service as FirefoxService
 
-options = webdriver.FirefoxOptions()
-driver = webdriver.Remote(
-    command_executor="http://localhost:4444/wd/hub",
-    options=options
-)
+if len(sys.argv) < 2:
+    print("❌ Usage: python3 test_selenium.py <URL>")
+    sys.exit(1)
 
-# Replace with your container’s IP:PORT
-driver.get("http://192.168.77.133:8085")
+url = sys.argv[1]
 
-assert "Apache" in driver.page_source, "❌ Apache page content mismatch!"
-print("✅ Apache page loaded successfully!")
+# 🔹 Path to geckodriver (absolute path)
+# Windows: r"C:\Users\deepak\Downloads\geckodriver.exe"
+# Linux: "/usr/local/bin/geckodriver"
+GECKO_PATH = os.path.abspath("geckodriver")
 
+service = FirefoxService(executable_path=GECKO_PATH)
+driver = webdriver.Firefox(service=service)
+
+driver.get(url)
+
+assert "Apache" in driver.title, "❌ Apache page title mismatch!"
+
+print("✅ Apache page loaded successfully on Firefox!")
 driver.quit()
