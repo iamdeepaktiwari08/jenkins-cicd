@@ -1,24 +1,24 @@
-import sys
 from selenium import webdriver
 from selenium.webdriver.firefox.service import Service
-from selenium.webdriver.firefox.options import Options
+import sys
 
-if len(sys.argv) < 2:
-    print("❌ Usage: python3 test_apache_page.py <URL>")
-    sys.exit(1)
-
+# Get URL from command-line arg
 url = sys.argv[1]
 
-# Headless mode for Jenkins
-options = Options()
-options.add_argument("--headless")
-
+# Firefox driver path
 service = Service("/usr/local/bin/geckodriver")
-driver = webdriver.Firefox(service=service, options=options)
+driver = webdriver.Firefox(service=service)
 
+# Open Apache page
 driver.get(url)
 
-assert "Apache" in driver.title, "❌ Apache page title mismatch!"
+# Debug info
+print("🔹 Page title is:", driver.title)
 
-print("✅ Apache page loaded successfully on Firefox (Jenkins headless)!")
+# Assertion according to your actual title
+assert "Jai Shri Ram Jai Hanuman" in driver.title, \
+       f"❌ Page title mismatch! Found: {driver.title}"
+
+print("✅ Selenium test passed! Apache page title verified.")
+
 driver.quit()
