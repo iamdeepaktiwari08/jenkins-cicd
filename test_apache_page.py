@@ -1,24 +1,22 @@
 from selenium import webdriver
 from selenium.webdriver.firefox.service import Service
+from selenium.webdriver.firefox.options import Options
 import sys
 
-# Get URL from command-line arg
-url = sys.argv[1]
+url = sys.argv[1] if len(sys.argv) > 1 else "http://localhost:8085"
 
-# Firefox driver path
+# Firefox options (Headless mode)
+options = Options()
+options.add_argument("--headless")   # 👈 server/jenkins me GUI ke bina chalega
+
 service = Service("/usr/local/bin/geckodriver")
-driver = webdriver.Firefox(service=service)
+driver = webdriver.Firefox(service=service, options=options)
 
-# Open Apache page
 driver.get(url)
+print("Page Title:", driver.title)
 
-# Debug info
-print("🔹 Page title is:", driver.title)
+assert "Jai Shri Ram Jai Hanuman" in driver.title, "❌ Title mismatch!"
 
-# Assertion according to your actual title
-assert "Jai Shri Ram Jai Hanuman" in driver.title, \
-       f"❌ Page title mismatch! Found: {driver.title}"
-
-print("✅ Selenium test passed! Apache page title verified.")
+print("✅ Test Passed: Correct title found!")
 
 driver.quit()
