@@ -1,0 +1,53 @@
+pipeline {
+    agent { label 'apache-node' }  // Runs on your agent node
+
+    environment {
+        IMAGE_NAME = "apache-website-arm64"
+        CONTAINER_NAME = "apache-container-arm64"
+        PORT = "8085"               // Port for website access
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                // Pull latest code from GitHub
+                git branch: 'main', url: 'git@github.com:iamdeepaktiwari08/jenkins-apache.git'
+            }
+        }
+
+        stage('Build Docker Image') {
+            steps {
+                // Build ARM64 Docker image
+                sh "docker build -t $IMAGE_NAME ."
+            }
+        }
+
+        stage('Stop Old Container') {
+            steps {
+                // Stop & remove old container if running
+                sh """
+                if [ \$(docker ps -q -f name=$CONTAINER_NAME) ]; then
+                    docker stop $CONTAINER_NAME
+                    docker rm $CONTAINER_NAME
+                fi
+                """
+            }
+        }
+
+        stage('Deploy Container') {
+            steps {
+                // Run new container
+                sh "docker run -d -p $PORT:80 --name $CONTAINER_NAME $IMAGE_NAME"
+            }
+        }
+    }
+
+    post {
+        success {
+            echo "🚀 Apache ARM64 Website Deployed Successfully!"
+        }
+        failure {
+            echo "❌ Deployment Failed!"
+        }
+    }
+}
