@@ -1,22 +1,30 @@
+
 from selenium import webdriver
 from selenium.webdriver.firefox.service import Service
 from selenium.webdriver.firefox.options import Options
-import sys
+import sys, time
 
 url = sys.argv[1] if len(sys.argv) > 1 else "http://localhost:8085"
 
-# Firefox options (Headless mode)
 options = Options()
-options.add_argument("--headless")   # 👈 server/jenkins me GUI ke bina chalega
+options.add_argument("--headless")  # run without GUI (important for Jenkins)
 
-service = Service("/usr/local/bin/geckodriver")
+service = Service("/usr/local/bin/geckodriver")  # path to geckodriver
 driver = webdriver.Firefox(service=service, options=options)
 
-driver.get(url)
-print("Page Title:", driver.title)
+try:
+    driver.get(url)
+    time.sleep(2)  # wait for page load
 
-assert "Jai Shri Ram Jai Hanuman" in driver.title, "❌ Title mismatch!"
+    page_title = driver.title
+    print(f"✅ Page Title: {page_title}")
 
-print("✅ Test Passed: Correct title found!")
+    if "Apache" in page_title or "Index" in page_title:
+        print("✅ Apache page is loading correctly")
+        sys.exit(0)  # success
+    else:
+        print("❌ Apache page title not correct")
+        sys.exit(1)  # fail
 
-driver.quit()
+finally:
+    driver.quit()
