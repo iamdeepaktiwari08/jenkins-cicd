@@ -1,53 +1,79 @@
 pipeline {
-    agent { label 'apache-node' }  // Runs on your agent node
+    agent any
 
     environment {
-        IMAGE_NAME = "apache-website-arm64"
-        CONTAINER_NAME = "apache-container-arm64"
-        PORT = "8085"               // Port for website access
+        PORT = "8085"
+        IMAGE_NAME = "apache-image"
+        CONTAINER_NAME = "apache-container"
+        REPO_URL = "https://github.com/iamdeepaktiwari08/jenkins-apache.git"
     }
 
     stages {
         stage('Checkout') {
             steps {
-                // Pull latest code from GitHub
-                git branch: 'main', url: 'git@github.com:iamdeepaktiwari08/jenkins-apache.git'
+                git branch: 'main',
+                    url: "${env.REPO_URL}",
+                    credentialsId: 'b511c055-0d97-4ebf-b6d8-8dd841895a15'
             }
         }
 
-        stage('Build Docker Image') {
+        stage('Firewall Setup') {
             steps {
-                // Build ARM64 Docker image
-                sh "docker build -t $IMAGE_NAME ."
+                sh '''
+                    sudo firewall-cmd --add-port=${PORT}/tcp --permanent || true
+                    sudo firewall-cmd --reload
+                '''
             }
         }
 
         stage('Stop Old Container') {
             steps {
-                // Stop & remove old container if running
-                sh """
-                if [ \$(docker ps -q -f name=$CONTAINER_NAME) ]; then
-                    docker stop $CONTAINER_NAME
-                    docker rm $CONTAINER_NAME
-                fi
-                """
+                sh '''
+                    if [ "$(docker ps -aq -f name=${CONTAINER_NAME})" ]; then
+                        docker stop ${CONTAINER_NAME} || true
+                        docker rm ${CONTAINER_NAME} || true
+                    fi
+                '''
             }
         }
 
-        stage('Deploy Container') {
+        stage('Build Docker Image') {
             steps {
-                // Run new container
-                sh "docker run -d -p $PORT:80 --name $CONTAINER_NAME $IMAGE_NAME"
+                sh 'docker build -t ${IMAGE_NAME} .'
+            }
+        }
+
+        stage('Run Container') {
+            steps {
+                sh 'docker run -d --name ${CONTAINER_NAME} -p ${PORT}:80 ${IMAGE_NAME}'
+            }
+        }
+
+        stage('Show URL') {
+            steps {
+                sh '''
+                    SERVER_IP=$(hostname -I | awk '{print $1}')
+                    echo "✅ Apache running at: http://$SERVER_IP:${PORT}"
+                '''
+            }
+        }
+
+        stage('Selenium Test') {
+            steps {
+                sh '''
+                    echo "⚡ Running Selenium Test..."
+                    python3 tests/test_apache.py "http://$(hostname -I | awk '{print $1}'):${PORT}"
+                '''
             }
         }
     }
 
     post {
         success {
-            echo "🚀 Apache ARM64 Website Deployed Successfully!"
+            echo "🎉 Deployment + Tests successful!"
         }
         failure {
-            echo "❌ Deployment Failed!"
+            echo "❌ Deployment or Tests failed!"
         }
     }
 }
