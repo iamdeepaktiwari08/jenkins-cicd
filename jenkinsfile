@@ -1,79 +1,35 @@
 pipeline {
     agent any
 
-    environment {
-        PORT = "8085"
-        IMAGE_NAME = "apache-image"
-        CONTAINER_NAME = "apache-container"
-        REPO_URL = "https://github.com/iamdeepaktiwari08/jenkins-apache.git"
-    }
-
     stages {
-        stage('Checkout') {
-            steps {
-                git branch: 'main',
-                    url: "${env.REPO_URL}",
-                    credentialsId: 'b511c055-0d97-4ebf-b6d8-8dd841895a15'
-            }
-        }
-
-        stage('Firewall Setup') {
-            steps {
-                sh '''
-                    sudo firewall-cmd --add-port=${PORT}/tcp --permanent || true
-                    sudo firewall-cmd --reload
-                '''
-            }
-        }
-
-        stage('Stop Old Container') {
-            steps {
-                sh '''
-                    if [ "$(docker ps -aq -f name=${CONTAINER_NAME})" ]; then
-                        docker stop ${CONTAINER_NAME} || true
-                        docker rm ${CONTAINER_NAME} || true
-                    fi
-                '''
-            }
-        }
-
         stage('Build Docker Image') {
             steps {
-                sh 'docker build -t ${IMAGE_NAME} .'
-            }
-        }
-
-        stage('Run Container') {
-            steps {
-                sh 'docker run -d --name ${CONTAINER_NAME} -p ${PORT}:80 ${IMAGE_NAME}'
-            }
-        }
-
-        stage('Show URL') {
-            steps {
                 sh '''
-                    SERVER_IP=$(hostname -I | awk '{print $1}')
-                    echo "✅ Apache running at: http://$SERVER_IP:${PORT}"
+                    # Purana container hatao (agar chal raha ho)
+                    docker rm -f $(docker ps -aq) || true
+                    
+                    # Naya image build karo
+                    docker build --no-cache -t new .
                 '''
             }
         }
 
-        stage('Selenium Test') {
+        stage('Run Docker Container') {
             steps {
                 sh '''
-                    echo "⚡ Running Selenium Test..."
-                    python3 tests/test_apache.py "http://$(hostname -I | awk '{print $1}'):${PORT}"
+                    # Naya container run karo
+                    docker run -d -p 80:80 --name website new
                 '''
             }
         }
-    }
 
-    post {
-        success {
-            echo "🎉 Deployment + Tests successful!"
-        }
-        failure {
-            echo "❌ Deployment or Tests failed!"
+        stage('Test Website') {
+            steps {
+                sh '''
+                    echo "Testing website..."
+                    curl -s http://192.168.77.137 | grep "Jai Shri Ram" || exit 1
+                '''
+            }
         }
     }
 }
