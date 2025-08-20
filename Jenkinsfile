@@ -1,43 +1,47 @@
 pipeline {
     agent any
 
+    environment {
+        IMAGE_NAME = "mywebapp"
+        CONTAINER_NAME = "mywebapp-container"
+    }
+
     stages {
         stage('Clone Repo') {
             steps {
                 echo "📥 Cloning Repository..."
-                git 'https://github.com/iamdeepaktiwari08/jenkins-cicd.git'
+                git branch: 'main', url: 'https://github.com/iamdeepaktiwari08/jenkins-cicd.git'
             }
         }
 
         stage('Build Docker Image') {
             steps {
                 echo "🐳 Building Docker Image..."
-                sh 'docker build -t webapp:latest .'
+                sh 'docker build -t $IMAGE_NAME .'
             }
         }
 
         stage('Stop Old Container') {
             steps {
-                echo "🛑 Stopping old container if exists..."
+                echo "🛑 Stopping old container..."
                 sh '''
-                if [ $(docker ps -q -f name=webapp) ]; then
-                    docker stop webapp && docker rm webapp
-                fi
+                docker stop $CONTAINER_NAME || true
+                docker rm $CONTAINER_NAME || true
                 '''
             }
         }
 
         stage('Run New Container') {
             steps {
-                echo "🚀 Running New Container on port 81..."
-                sh 'docker run -d --name webapp -p 81:80 webapp:latest'
+                echo "🚀 Running new container..."
+                sh 'docker run -d --name $CONTAINER_NAME -p 81:80 $IMAGE_NAME'
             }
         }
 
         stage('Test Deployment') {
             steps {
                 echo "🔍 Testing Deployment..."
-                sh 'curl -I http://192.168.77.137:81 || exit 1'
+                sh 'curl -s http://localhost:81 | grep "Jai Shri Ram"'
             }
         }
     }
