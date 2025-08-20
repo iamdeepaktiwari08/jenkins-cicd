@@ -1,35 +1,54 @@
 pipeline {
     agent any
 
+    environment {
+        IMAGE_NAME = "website"
+        CONTAINER_NAME = "website"
+        PORT = "80"
+    }
+
     stages {
+        stage('Checkout') {
+            steps {
+                git url: 'https://github.com/iamdeepaktiwari08/jenkins-cicd.git', branch: 'main'
+            }
+        }
+
         stage('Build Docker Image') {
             steps {
-                sh '''
-                    # Purana container hatao (agar chal raha ho)
-                    docker rm -f $(docker ps -aq) || true
-                    
-                    # Naya image build karo
-                    docker build --no-cache -t new .
-                '''
+                sh """
+                # Build image with a tag using the short commit hash for versioning
+                COMMIT_HASH=\$(git rev-parse --short HEAD)
+                sudo docker build -t ${IMAGE_NAME}:\$COMMIT_HASH .
+                """
             }
         }
 
-        stage('Run Docker Container') {
+        stage('Stop Old Container') {
             steps {
-                sh '''
-                    # Naya container run karo
-                    docker run -d -p 80:80 --name website new
-                '''
+                sh """
+                sudo docker rm -f ${CONTAINER_NAME} || true
+                """
             }
         }
 
-        stage('Test Website') {
+        stage('Run New Container') {
             steps {
-                sh '''
-                    echo "Testing website..."
-                    curl -s http://192.168.77.137 | grep "Jai Shri Ram" || exit 1
-                '''
+                sh """
+                # Use the image tagged with the latest commit
+                COMMIT_HASH=\$(git rev-parse --short HEAD)
+                sudo docker run -d --name ${CONTAINER_NAME} -p ${PORT}:80 ${IMAGE_NAME}:\$COMMIT_HASH
+                """
             }
+        }
+    }
+
+    post {
+        success {
+            echo "✅ Website deployed successfully on port ${PORT}."
+        }
+        failure {
+            echo "❌ Build or deploy failed."
         }
     }
 }
